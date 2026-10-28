@@ -45,6 +45,21 @@ def test_r7_link_is_an_absolute_http_or_https_url(
     assert err.value.reason == reason
 
 
+@pytest.mark.parametrize(
+    "link",
+    [
+        "https://x.com:abc/a",
+        "http://x.com:99999/a",
+        "http://x.com:-1/a",
+    ],
+)
+def test_r7_link_with_a_bad_port_is_not_absolute(link: str) -> None:
+    with pytest.raises(ArticleRuleError) as err:
+        CanonicalUrl.from_link(link)
+
+    assert err.value.reason == ArticleRejectReason.LINK_NOT_ABSOLUTE
+
+
 def test_r8_query_text_stays_as_the_feed_gave_it() -> None:
     url = CanonicalUrl.from_link("HTTP://Example.com/a/?q=a%20b&flag&utm_id=1")
 
