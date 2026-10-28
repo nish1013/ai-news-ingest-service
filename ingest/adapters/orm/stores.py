@@ -6,6 +6,7 @@ from datetime import datetime
 
 import psycopg
 from django.db import IntegrityError, transaction
+from django.db.models import ProtectedError
 
 from ingest.adapters.orm import models
 from ingest.domain.article import NewArticle
@@ -39,11 +40,15 @@ class DjangoFeedCatalog:
 
     def set_active(self, feed_id: int, *, active: bool) -> None:
         """Store the active flag of a feed."""
-        raise NotImplementedError
+        models.Feed.objects.filter(id=feed_id).update(active=active)
 
     def delete(self, feed_id: int) -> None:
         """Remove a feed. Raise FeedRuleError(has_articles)."""
-        raise NotImplementedError
+        try:
+            with transaction.atomic():
+                models.Feed.objects.filter(id=feed_id).delete()
+        except ProtectedError as err:
+            raise FeedRuleError(FeedRuleReason.HAS_ARTICLES) from err
 
 
 class DjangoArticleStore:

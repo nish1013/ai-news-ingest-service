@@ -82,8 +82,15 @@ class FeedCommands:
         self, feed_id: int, *, active: bool
     ) -> FeedDeactivated | FeedReactivated:
         """Turn a feed on or off for the next pass."""
-        raise NotImplementedError
+        self._catalog.set_active(feed_id, active=active)
+        if active:
+            return FeedReactivated(feed_id)
+        return FeedDeactivated(feed_id)
 
     def delete(self, feed_id: int) -> FeedDeleted | FeedDeleteRefused:
         """Remove a feed that has no stored articles."""
-        raise NotImplementedError
+        try:
+            self._catalog.delete(feed_id)
+        except FeedRuleError as err:
+            return FeedDeleteRefused(feed_id, err.reason)
+        return FeedDeleted(feed_id)
