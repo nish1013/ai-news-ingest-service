@@ -31,7 +31,7 @@ class HttpFeedReader:
             body = self._fetch(url)
         except httpx.TimeoutException:
             return FetchFailure.timeout()
-        except httpx.HTTPError:
+        except (httpx.HTTPError, httpx.InvalidURL, UnicodeError):
             return FetchFailure.connection()
         if isinstance(body, FetchFailure):
             return body
