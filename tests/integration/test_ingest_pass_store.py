@@ -1,5 +1,3 @@
-from datetime import UTC, datetime
-
 import pytest
 
 from ingest.adapters.orm.models import Article, Feed, RunRecord
@@ -11,10 +9,8 @@ from ingest.adapters.orm.stores import (
 from ingest.adapters.postgres_lock import PostgresPassLock
 from ingest.application.ingest_pass import IngestPass
 from ingest.domain.feed import FeedItem, FetchFailure, ParsedFeed
-from tests.fakes import FixedClock, StubFeedReader
+from tests.fakes import PUBLISHED, FixedClock, StubFeedReader, feed_items
 from tests.integration.lock_probe import pass_lock_is_free
-
-PUBLISHED = datetime(2026, 10, 26, 8, 50, tzinfo=UTC)
 
 
 def _run(reader: StubFeedReader) -> None:
@@ -26,19 +22,6 @@ def _run(reader: StubFeedReader) -> None:
         run_log=DjangoRunLog(),
         clock=FixedClock(),
     ).run()
-
-
-def _items(feed_id: int, count: int) -> ParsedFeed:
-    return ParsedFeed(
-        items=tuple(
-            FeedItem(
-                link=f"https://example.com/{feed_id}/{n}",
-                title=f"Item {n}",
-                published_at=PUBLISHED,
-            )
-            for n in range(count)
-        )
-    )
 
 
 @pytest.mark.django_db
@@ -71,7 +54,7 @@ def test_s7_ac1_run_record_holds_counts_and_the_lock_is_free() -> None:
     reader = StubFeedReader()
     for n in range(1, 21):
         feed = Feed.objects.create(name=f"Feed {n}", url=f"https://feed{n}.test/rss")
-        reader.results[feed.url] = _items(feed.id, 3 if n <= 4 else 2)
+        reader.results[feed.url] = feed_items(feed.id, 3 if n <= 4 else 2)
     reader.results["https://feed20.test/rss"] = FetchFailure(reason="timeout")
 
     _run(reader)

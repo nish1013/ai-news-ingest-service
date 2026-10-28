@@ -20,7 +20,7 @@ class DjangoFeedCatalog:
     def active_feeds(self) -> list[Feed]:
         """Return the active feeds."""
         return [
-            Feed(id=row.id, name=row.name, url=row.url)
+            Feed(id=row.id, url=row.url)
             for row in models.Feed.objects.filter(active=True).order_by("id")
         ]
 

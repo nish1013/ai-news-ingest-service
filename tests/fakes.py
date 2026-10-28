@@ -2,8 +2,23 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from ingest.domain.article import NewArticle
-from ingest.domain.feed import Feed, FetchFailure, ParsedFeed
+from ingest.domain.feed import Feed, FeedItem, FetchFailure, ParsedFeed
 from ingest.domain.run import RunCounts
+
+PUBLISHED = datetime(2026, 10, 26, 8, 50, tzinfo=UTC)
+
+
+def feed_items(feed_id: int, count: int) -> ParsedFeed:
+    return ParsedFeed(
+        items=tuple(
+            FeedItem(
+                link=f"https://example.com/{feed_id}/{n}",
+                title=f"Item {n}",
+                published_at=PUBLISHED,
+            )
+            for n in range(count)
+        )
+    )
 
 
 @dataclass

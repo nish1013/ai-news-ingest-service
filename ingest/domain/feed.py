@@ -70,7 +70,6 @@ class Feed:
     """A registered feed in a pass list."""
 
     id: int
-    name: str
     url: str
 
 
