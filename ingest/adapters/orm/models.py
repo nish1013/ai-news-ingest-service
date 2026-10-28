@@ -1,6 +1,7 @@
 """Django models for feeds, articles and run records."""
 
 from django.db import models
+from django.db.models.functions import MD5
 
 FEED_URL_UNIQUE = "feed_url_unique"
 ARTICLE_URL_UNIQUE = "article_canonical_url_unique"
@@ -23,17 +24,20 @@ class Feed(models.Model):
 
 
 class Article(models.Model):
-    """A stored article. One row per canonical URL (R6)."""
+    """A stored article. One row per canonical URL (R6).
+
+    The key is on the MD5 of the URL: a btree entry holds at most 2704 bytes.
+    """
 
     feed = models.ForeignKey(Feed, on_delete=models.PROTECT, related_name="articles")
-    canonical_url = models.CharField(max_length=2000)
+    canonical_url = models.TextField()
     title = models.TextField()
     published_at = models.DateTimeField(null=True)
     stored_at = models.DateTimeField()
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["canonical_url"], name=ARTICLE_URL_UNIQUE),
+            models.UniqueConstraint(MD5("canonical_url"), name=ARTICLE_URL_UNIQUE),
         ]
 
 
