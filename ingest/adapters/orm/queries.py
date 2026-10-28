@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from django.db.models import Count, F, Q, QuerySet
+from django.db.models import Count, F, Q
 
 from ingest.adapters.orm.models import Article
 from ingest.domain.metric import FUTURE_DATE_TOLERANCE, ON_TIME_LIMIT, OnTimeMetric
@@ -11,11 +11,6 @@ _EXCLUDED = Q(published_at__isnull=True) | Q(
     published_at__gt=F("stored_at") + FUTURE_DATE_TOLERANCE
 )
 _ON_TIME = ~_EXCLUDED & Q(stored_at__lt=F("published_at") + ON_TIME_LIMIT)
-
-
-def on_time_articles() -> QuerySet[Article]:
-    """Return the articles stored under ON_TIME_LIMIT after their published date."""
-    return Article.objects.filter(_ON_TIME)
 
 
 def on_time_metric(since: datetime) -> OnTimeMetric:
