@@ -4,7 +4,7 @@ from datetime import datetime
 
 from ingest.adapters.orm import models
 from ingest.domain.article import NewArticle
-from ingest.domain.feed import Feed
+from ingest.domain.feed import Feed, FeedDetails
 from ingest.domain.run import RunCounts
 
 
@@ -17,6 +17,14 @@ class DjangoFeedCatalog:
             Feed(id=row.id, name=row.name, url=row.url)
             for row in models.Feed.objects.filter(active=True).order_by("id")
         ]
+
+    def add(self, details: FeedDetails) -> int:
+        """Store an active feed and return its id. Raise FeedRuleError(url_taken)."""
+        raise NotImplementedError
+
+    def update(self, feed_id: int, details: FeedDetails) -> None:
+        """Store a new name and URL. Raise FeedRuleError(url_taken)."""
+        raise NotImplementedError
 
 
 class DjangoArticleStore:
