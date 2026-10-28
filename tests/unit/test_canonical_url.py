@@ -60,6 +60,19 @@ def test_r7_link_with_a_bad_port_is_not_absolute(link: str) -> None:
     assert err.value.reason == ArticleRejectReason.LINK_NOT_ABSOLUTE
 
 
+@pytest.mark.parametrize(
+    ("link", "canonical"),
+    [
+        ("https://User:Pass@X.com/a", "https://User:Pass@x.com/a"),
+        ("https://X.com:8443/a", "https://x.com:8443/a"),
+        ("https://Me@Example.COM:80/a", "https://Me@example.com:80/a"),
+        ("http://[ABCD::1]:8080/a", "http://[abcd::1]:8080/a"),
+    ],
+)
+def test_r8_only_the_host_is_lower_cased(link: str, canonical: str) -> None:
+    assert CanonicalUrl.from_link(link).value == canonical
+
+
 def test_r8_query_text_stays_as_the_feed_gave_it() -> None:
     url = CanonicalUrl.from_link("HTTP://Example.com/a/?q=a%20b&flag&utm_id=1")
 
