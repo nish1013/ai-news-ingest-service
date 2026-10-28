@@ -56,3 +56,16 @@ def test_s5_ac6_one_feed_fails_and_the_other_stores_two_new_items() -> None:
     batch.refresh_from_db()
     assert batch.last_status == "fetch_failed"
     assert out.getvalue() == "Pass completed: 1 feeds ok, 1 failed, 2 new articles\n"
+
+
+@pytest.mark.django_db
+def test_s4_ac5_no_active_feeds_pass_starts_and_completes_with_zero_counts() -> None:
+    Feed.objects.create(name="Old", url="https://old.test/feed", active=False)
+    out = StringIO()
+
+    call_command("ingest_feeds", stdout=out)
+
+    record = RunRecord.objects.get()
+    assert record.finished_at is not None
+    assert (record.feeds_ok, record.feeds_failed, record.articles_new) == (0, 0, 0)
+    assert out.getvalue() == "Pass completed: 0 feeds ok, 0 failed, 0 new articles\n"

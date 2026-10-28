@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import pytest
@@ -20,7 +21,7 @@ from ingest.application.feed_commands import (
     FeedRejected,
 )
 from ingest.application.ingest_pass import IngestPass
-from ingest.domain.feed import FeedRuleReason, ParsedFeed
+from ingest.domain.feed import FeedRuleReason, FetchFailure, ParsedFeed
 from tests.fakes import FixedClock, StubFeedReader
 
 BATCH_URL = "https://www.deeplearning.ai/the-batch/feed/"
@@ -167,6 +168,43 @@ def test_s3_ac2_next_pass_reads_a_reactivated_feed() -> None:
 
     assert result == FeedReactivated(feed.id)
     assert _next_pass_reads() == [BATCH_URL, OPENAI_URL]
+
+
+@dataclass
+class _DeactivatingReader:
+    """Ana turns a feed off while the pass reads the first feed."""
+
+    feed_id: int
+    read_urls: list[str] = field(default_factory=list)
+
+    def read(self, url: str) -> ParsedFeed | FetchFailure:
+        if not self.read_urls:
+            assert _commands().set_active(self.feed_id, active=False) == (
+                FeedDeactivated(self.feed_id)
+            )
+        self.read_urls.append(url)
+        return ParsedFeed(items=())
+
+
+@pytest.mark.django_db
+def test_s3_ac3_feed_turned_off_mid_pass_is_still_read_this_pass() -> None:
+    Feed.objects.create(name="The Batch", url=BATCH_URL)
+    feed = Feed.objects.create(name="OpenAI blog", url=OPENAI_URL)
+    reader = _DeactivatingReader(feed_id=feed.id)
+
+    IngestPass(
+        catalog=DjangoFeedCatalog(),
+        reader=reader,
+        store=DjangoArticleStore(),
+        lock=PostgresPassLock(),
+        run_log=DjangoRunLog(),
+        clock=FixedClock(),
+    ).run()
+
+    assert reader.read_urls == [BATCH_URL, OPENAI_URL]
+    feed.refresh_from_db()
+    assert (feed.active, feed.last_status) == (False, "ok")
+    assert _next_pass_reads() == [BATCH_URL]
 
 
 @pytest.mark.django_db

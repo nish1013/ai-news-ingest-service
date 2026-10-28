@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from ingest.application.ports import (
+    ArticleBatchError,
     ArticleStore,
     Clock,
     FeedCatalog,
@@ -32,6 +33,11 @@ class PassReport:
     counts: RunCounts
 
 
+@dataclass(frozen=True)
+class IngestPassSkipped:
+    """Another pass holds the pass lock. The tick changes no data."""
+
+
 class IngestPass:
     """Runs one ingest pass under the pass lock."""
 
@@ -52,9 +58,10 @@ class IngestPass:
         self._run_log = run_log
         self._clock = clock
 
-    def run(self) -> PassReport:
-        """Run one pass and write its run record."""
-        self._lock.acquire()
+    def run(self) -> PassReport | IngestPassSkipped:
+        """Run one pass and write its run record. Skip when another pass runs."""
+        if not self._lock.try_acquire():
+            return IngestPassSkipped()
         try:
             return self._run_locked()
         finally:
@@ -68,12 +75,20 @@ class IngestPass:
         for feed in feeds:
             read_at = self._clock.now()
             result = self._reader.read(feed.url)
-            self._catalog.save_health(feed.id, feed.health_after(result, read_at))
+            health = feed.health_after(result, read_at)
             if isinstance(result, FetchFailure):
+                self._catalog.save_health(feed.id, health)
+                feeds_failed += 1
+                continue
+            try:
+                with self._store.batch():
+                    outcomes = [self._ingest(feed, item) for item in result.items]
+                    self._catalog.save_health(feed.id, health)
+            except ArticleBatchError:
                 feeds_failed += 1
                 continue
             feeds_ok += 1
-            articles.extend(self._ingest(feed, item) for item in result.items)
+            articles.extend(outcomes)
         counts = RunCounts(
             feeds_ok=feeds_ok,
             feeds_failed=feeds_failed,

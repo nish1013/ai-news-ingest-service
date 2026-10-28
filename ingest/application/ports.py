@@ -1,5 +1,6 @@
 """Ports the use cases call. Adapters implement them."""
 
+from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import Protocol
 
@@ -12,6 +13,10 @@ from ingest.domain.feed import (
     ParsedFeed,
 )
 from ingest.domain.run import RunCounts
+
+
+class ArticleBatchError(Exception):
+    """The store refused a batch. None of its articles are stored."""
 
 
 class FeedCatalog(Protocol):
@@ -53,6 +58,13 @@ class FeedReader(Protocol):
 class ArticleStore(Protocol):
     """The stored articles."""
 
+    def batch(self) -> AbstractContextManager[None]:
+        """Commit the writes made inside, feed health included, as one unit or none.
+
+        Raise ArticleBatchError when the store refuses the unit.
+        """
+        ...
+
     def add(self, article: NewArticle) -> bool:
         """Store one article. Return False when its canonical URL is stored."""
         ...
@@ -61,8 +73,8 @@ class ArticleStore(Protocol):
 class PassLock(Protocol):
     """Lets one ingest pass run at a time."""
 
-    def acquire(self) -> None:
-        """Take the lock."""
+    def try_acquire(self) -> bool:
+        """Take the lock if it is free. Return False when another pass holds it."""
         ...
 
     def release(self) -> None:

@@ -1,3 +1,4 @@
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 
@@ -56,6 +57,9 @@ class StubFeedReader:
 class InMemoryArticleStore:
     articles: list[NewArticle] = field(default_factory=list)
 
+    def batch(self) -> AbstractContextManager[None]:
+        return nullcontext()
+
     def add(self, article: NewArticle) -> bool:
         if any(a.canonical_url == article.canonical_url for a in self.articles):
             return False
@@ -68,9 +72,12 @@ class FakePassLock:
     held: bool = False
     acquired: int = 0
 
-    def acquire(self) -> None:
+    def try_acquire(self) -> bool:
+        if self.held:
+            return False
         self.held = True
         self.acquired += 1
+        return True
 
     def release(self) -> None:
         self.held = False

@@ -8,7 +8,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import F, QuerySet
 from django.http import HttpRequest
 
-from ingest.adapters.orm.models import Feed
+from ingest.adapters.orm.models import Feed, RunRecord
 from ingest.adapters.orm.stores import DjangoFeedCatalog
 from ingest.application.feed_commands import (
     FeedCommands,
@@ -112,6 +112,42 @@ class FeedAdmin(admin.ModelAdmin):
         """Delete each feed through FeedCommands."""
         for feed in queryset:
             self.delete_model(request, feed)
+
+
+@admin.register(RunRecord)
+class RunRecordAdmin(admin.ModelAdmin):
+    """Run records, newest first. Only the pass writes them."""
+
+    list_display = (
+        "started_at",
+        "finished_at",
+        "feeds_ok",
+        "feeds_failed",
+        "articles_new",
+        "unfinished",
+    )
+    ordering = ("-started_at",)
+
+    @admin.display(boolean=True, description="Unfinished")
+    def unfinished(self, obj: RunRecord) -> bool:
+        """Return True when the pass wrote no finished time."""
+        return obj.finished_at is None
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        """Refuse: only the pass adds run records."""
+        return False
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: RunRecord | None = None
+    ) -> bool:
+        """Refuse: only the pass changes run records."""
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: RunRecord | None = None
+    ) -> bool:
+        """Refuse: run records are the history of the passes."""
+        return False
 
 
 def _commands() -> FeedCommands:

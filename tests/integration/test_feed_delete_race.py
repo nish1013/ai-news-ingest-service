@@ -6,16 +6,22 @@ import pytest
 from django.db import IntegrityError, connection, transaction
 from django.db.models.signals import pre_delete
 
-from ingest.adapters.orm.models import Article, Feed
-from ingest.adapters.orm.stores import DjangoArticleStore, DjangoFeedCatalog
+from ingest.adapters.orm.models import Article, Feed, RunRecord
+from ingest.adapters.orm.stores import (
+    DjangoArticleStore,
+    DjangoFeedCatalog,
+    DjangoRunLog,
+)
+from ingest.adapters.postgres_lock import PostgresPassLock
 from ingest.application.feed_commands import (
     FeedCommands,
     FeedDeleted,
     FeedDeleteRefused,
 )
+from ingest.application.ingest_pass import IngestPass
 from ingest.domain.article import CanonicalUrl, NewArticle
-from ingest.domain.feed import FeedRuleReason
-from tests.fakes import FixedClock
+from ingest.domain.feed import FeedRuleReason, FetchFailure, ParsedFeed
+from tests.fakes import FixedClock, feed_items
 
 WAIT_SECONDS = 10
 
@@ -100,3 +106,43 @@ def test_r10_article_committed_after_the_delete_check_refuses_the_delete() -> No
     assert result == FeedDeleteRefused(feed.id, FeedRuleReason.HAS_ARTICLES)
     assert writer.stored is True
     assert (Feed.objects.count(), Article.objects.count()) == (1, 1)
+
+
+@dataclass
+class _DeletingReader:
+    """Deletes `doomed_id` while it reads `doomed_url`, then returns the items."""
+
+    doomed_id: int
+    doomed_url: str
+    results: dict[str, ParsedFeed] = field(default_factory=dict)
+
+    def read(self, url: str) -> ParsedFeed | FetchFailure:
+        if url == self.doomed_url:
+            assert FeedCommands(DjangoFeedCatalog()).delete(self.doomed_id) == (
+                FeedDeleted(self.doomed_id)
+            )
+        return self.results[url]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_r10_feed_deleted_mid_pass_counts_failed_and_the_pass_completes() -> None:
+    doomed = Feed.objects.create(name="Batch", url="https://batch.test/feed")
+    next_feed = Feed.objects.create(name="OpenAI", url="https://openai.test/rss")
+    reader = _DeletingReader(doomed_id=doomed.id, doomed_url=doomed.url)
+    reader.results[doomed.url] = feed_items(doomed.id, 1)
+    reader.results[next_feed.url] = feed_items(next_feed.id, 1)
+
+    IngestPass(
+        catalog=DjangoFeedCatalog(),
+        reader=reader,
+        store=DjangoArticleStore(),
+        lock=PostgresPassLock(),
+        run_log=DjangoRunLog(),
+        clock=FixedClock(),
+    ).run()
+
+    assert list(Article.objects.values_list("feed_id", flat=True)) == [next_feed.id]
+    record = RunRecord.objects.get()
+    assert record.finished_at == FixedClock().at
+    assert (record.feeds_ok, record.feeds_failed, record.articles_new) == (1, 1, 1)
+    assert not Feed.objects.filter(id=doomed.id).exists()
