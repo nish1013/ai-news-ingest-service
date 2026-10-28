@@ -3,6 +3,7 @@
 from django.db import models
 
 FEED_URL_UNIQUE = "feed_url_unique"
+ARTICLE_URL_UNIQUE = "article_canonical_url_unique"
 
 
 class Feed(models.Model):
@@ -22,13 +23,18 @@ class Feed(models.Model):
 
 
 class Article(models.Model):
-    """A stored article."""
+    """A stored article. One row per canonical URL (R6)."""
 
     feed = models.ForeignKey(Feed, on_delete=models.PROTECT, related_name="articles")
     canonical_url = models.CharField(max_length=2000)
     title = models.TextField()
     published_at = models.DateTimeField(null=True)
     stored_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["canonical_url"], name=ARTICLE_URL_UNIQUE),
+        ]
 
 
 class RunRecord(models.Model):

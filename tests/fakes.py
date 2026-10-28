@@ -47,6 +47,8 @@ class InMemoryArticleStore:
     articles: list[NewArticle] = field(default_factory=list)
 
     def add(self, article: NewArticle) -> bool:
+        if any(a.canonical_url == article.canonical_url for a in self.articles):
+            return False
         self.articles.append(article)
         return True
 
