@@ -37,3 +37,12 @@ Where the build departs from [plan.md](plan.md), and why. A deviation becomes a 
 - **Built:** The unique constraint is on `MD5(canonical_url)`, with the same constraint name. `canonical_url` is a text column.
 - **Why:** A link over 2000 characters raised `DataError` and stopped the pass. On a text column, a plain btree unique key refuses a 5000-character link with `ProgramLimitExceeded` (index row over 2704 bytes). Two different URLs with one MD5 count as one article, an accepted risk at mvp.
 - **Undo:** Replace the expression constraint with a plain unique key on `canonical_url`. Cap the link length and reject longer links.
+
+## D5. Feed read deadline leaves out DNS lookups (PR 4, 2026-10-28)
+
+**In short:** A feed read can pass its 10 s deadline by the time its DNS lookups take.
+
+- **Plan:** A feed read has a 10 s total deadline (decisions.md D20, S5 AC10). The plan names a streamed body with a total deadline (Stack, HTTP row).
+- **Built:** Each request, redirects included, and then the body read get their timeouts set to the time left of the 10 s. After each body chunk, the reader checks the 10 s total and returns `timeout` when it is over.
+- **Why:** `httpx` has no total deadline, and the DNS lookup has no timeout. Connect, headers and body therefore end by 10 s, but each DNS lookup of the read adds its own time (one per redirect hop). The bound is 10 s plus the DNS time.
+- **Undo:** Run the read under a watchdog that closes the socket at 10 s total, and resolve DNS with a timeout. Then every read ends at 10 s.

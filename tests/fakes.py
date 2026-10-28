@@ -1,8 +1,8 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 
 from ingest.domain.article import NewArticle
-from ingest.domain.feed import Feed, FeedItem, FetchFailure, ParsedFeed
+from ingest.domain.feed import Feed, FeedHealth, FeedItem, FetchFailure, ParsedFeed
 from ingest.domain.run import RunCounts
 
 PUBLISHED = datetime(2026, 10, 26, 8, 50, tzinfo=UTC)
@@ -30,6 +30,16 @@ class InMemoryFeedCatalog:
 
     def active_feeds(self) -> list[Feed]:
         return [feed for feed, active in self.feeds if active]
+
+    def save_health(self, feed_id: int, health: FeedHealth) -> None:
+        self.feeds = [
+            (replace(feed, health=health) if feed.id == feed_id else feed, active)
+            for feed, active in self.feeds
+        ]
+
+    def health(self, feed_id: int) -> FeedHealth:
+        [feed] = [feed for feed, _ in self.feeds if feed.id == feed_id]
+        return feed.health
 
 
 @dataclass

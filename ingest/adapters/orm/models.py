@@ -13,6 +13,9 @@ class Feed(models.Model):
     name = models.CharField(max_length=200)
     url = models.CharField(max_length=2000)
     active = models.BooleanField(default=True)
+    last_status = models.CharField(max_length=20, blank=True, default="")
+    last_read_at = models.DateTimeField(null=True, blank=True)
+    failing_since = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [
