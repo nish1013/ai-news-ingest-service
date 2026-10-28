@@ -1,3 +1,4 @@
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 
@@ -55,6 +56,9 @@ class StubFeedReader:
 @dataclass
 class InMemoryArticleStore:
     articles: list[NewArticle] = field(default_factory=list)
+
+    def batch(self) -> AbstractContextManager[None]:
+        return nullcontext()
 
     def add(self, article: NewArticle) -> bool:
         if any(a.canonical_url == article.canonical_url for a in self.articles):

@@ -1,7 +1,7 @@
 """ORM adapters for the FeedCatalog, ArticleStore and RunLog ports."""
 
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from datetime import datetime
 
 import psycopg
@@ -72,6 +72,10 @@ class DjangoFeedCatalog:
 
 class DjangoArticleStore:
     """Articles in the article table."""
+
+    def batch(self) -> AbstractContextManager[None]:
+        """Commit the articles added inside in one transaction."""
+        return transaction.atomic()
 
     def add(self, article: NewArticle) -> bool:
         """Store one article. Return False when its canonical URL is stored."""

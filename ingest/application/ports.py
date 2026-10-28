@@ -1,5 +1,6 @@
 """Ports the use cases call. Adapters implement them."""
 
+from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import Protocol
 
@@ -52,6 +53,10 @@ class FeedReader(Protocol):
 
 class ArticleStore(Protocol):
     """The stored articles."""
+
+    def batch(self) -> AbstractContextManager[None]:
+        """Commit the articles added inside as one unit, or none of them."""
+        ...
 
     def add(self, article: NewArticle) -> bool:
         """Store one article. Return False when its canonical URL is stored."""

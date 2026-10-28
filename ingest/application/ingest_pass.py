@@ -79,7 +79,8 @@ class IngestPass:
                 feeds_failed += 1
                 continue
             feeds_ok += 1
-            articles.extend(self._ingest(feed, item) for item in result.items)
+            with self._store.batch():
+                articles.extend([self._ingest(feed, item) for item in result.items])
         counts = RunCounts(
             feeds_ok=feeds_ok,
             feeds_failed=feeds_failed,
