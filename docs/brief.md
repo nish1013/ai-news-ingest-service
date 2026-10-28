@@ -30,7 +30,7 @@ A scheduled job pulls AI news feeds and stores each article once.
 | `Feed` table with name, URL and active flag, edited in Django admin | Custom feed UI or API | Django admin gives the edit screen with no build work. |
 | Fetch each feed, with a 10 s timeout | Conditional GET (ETag, Last-Modified) | 15-min polls of 20 feeds are cheap. |
 | Parse RSS 2.0 and Atom into one article shape | Full-text scraping of article pages | Title, link, date and summary prove the flow. |
-| Canonical URL: lower-case host, no fragment, no `utm_*`, no trailing slash | Near-duplicate stories across sources | Same-story matching needs an LLM or a similarity score. |
+| Canonical URL: lower-case host, no fragment, no tracking parameter (`utm_*`, `fbclid`, `gclid`, `mc_cid`, `mc_eid`), no trailing slash | Near-duplicate stories across sources | Same-story matching needs an LLM or a similarity score. |
 | One stored article per canonical URL | LLM summary, tags, ranking | Those are consumers of this store. |
 | A failed feed does not stop the other feeds | Retry with backoff inside a pass | The next tick in 15 min is the retry. |
 | One run record per pass: feeds ok, feeds failed, articles new | Metrics stack, alerts | Logs are enough at `mvp`. |
