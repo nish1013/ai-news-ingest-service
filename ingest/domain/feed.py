@@ -5,8 +5,6 @@ from datetime import datetime
 from enum import StrEnum
 from urllib.parse import urlsplit
 
-from ingest.domain.errors import IngestError
-
 _FEED_SCHEMES = frozenset({"http", "https"})
 
 
@@ -20,7 +18,7 @@ class FeedRuleReason(StrEnum):
     HAS_ARTICLES = "has_articles"
 
 
-class FeedRuleError(IngestError):
+class FeedRuleError(Exception):
     """A feed command broke a feed rule."""
 
     def __init__(self, reason: FeedRuleReason) -> None:
