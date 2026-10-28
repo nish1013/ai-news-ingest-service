@@ -41,6 +41,7 @@ class CanonicalUrl:
             raise ArticleRuleError(ArticleRejectReason.LINK_MISSING)
         try:
             parts = urlsplit(text)
+            _ = parts.port  # raises ValueError on a bad port
             absolute = parts.scheme.lower() in _LINK_SCHEMES and bool(parts.hostname)
         except ValueError as err:
             raise ArticleRuleError(ArticleRejectReason.LINK_NOT_ABSOLUTE) from err
