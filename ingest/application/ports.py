@@ -59,7 +59,7 @@ class ArticleStore(Protocol):
     """The stored articles."""
 
     def batch(self) -> AbstractContextManager[None]:
-        """Commit the articles added inside as one unit, or none of them.
+        """Commit the writes made inside, feed health included, as one unit or none.
 
         Raise ArticleBatchError when the store refuses the unit.
         """

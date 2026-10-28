@@ -75,13 +75,15 @@ class IngestPass:
         for feed in feeds:
             read_at = self._clock.now()
             result = self._reader.read(feed.url)
-            self._catalog.save_health(feed.id, feed.health_after(result, read_at))
+            health = feed.health_after(result, read_at)
             if isinstance(result, FetchFailure):
+                self._catalog.save_health(feed.id, health)
                 feeds_failed += 1
                 continue
             try:
                 with self._store.batch():
                     outcomes = [self._ingest(feed, item) for item in result.items]
+                    self._catalog.save_health(feed.id, health)
             except ArticleBatchError:
                 feeds_failed += 1
                 continue

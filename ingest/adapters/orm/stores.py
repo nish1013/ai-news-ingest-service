@@ -75,7 +75,7 @@ class DjangoArticleStore:
     """Articles in the article table."""
 
     def batch(self) -> AbstractContextManager[None]:
-        """Commit the articles added inside in one transaction.
+        """Commit the writes made inside, feed health included, in one transaction.
 
         Raise ArticleBatchError when the commit is refused, as when the feed is gone.
         """
