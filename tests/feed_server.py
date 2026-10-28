@@ -17,6 +17,8 @@ class Reply:
     stall: bool = False
     drip_seconds: float = 0.0
     send_length: bool = True
+    header_delay_seconds: float = 0.0
+    location: str = ""
 
 
 @dataclass
@@ -48,8 +50,12 @@ def feed_server() -> Iterator[FeedServer]:
             if reply.stall:
                 state.stopped.wait()
                 return
+            if state.stopped.wait(reply.header_delay_seconds):
+                return
             self.send_response(reply.status)
             self.send_header("Content-Type", "application/rss+xml")
+            if reply.location:
+                self.send_header("Location", reply.location)
             if reply.send_length:
                 self.send_header("Content-Length", str(len(reply.body)))
             self.end_headers()

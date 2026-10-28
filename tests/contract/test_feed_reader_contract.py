@@ -197,6 +197,19 @@ def test_r4_refused_connection_fails_as_connection(
     assert reader.read(publish.refused()) == FetchFailure.connection()
 
 
+def test_s5_ac10_redirect_hops_past_the_total_deadline_fail_as_timeout() -> None:
+    hop_delay = DEADLINE_SECONDS * 2 / 3
+    with feed_server() as server:
+        final = server.reply("/final", Reply(header_delay_seconds=hop_delay))
+        first = server.reply(
+            "/first",
+            Reply(status=302, location=final, header_delay_seconds=hop_delay),
+        )
+        reader = HttpFeedReader(deadline_seconds=DEADLINE_SECONDS)
+
+        assert reader.read(first) == FetchFailure.timeout()
+
+
 @pytest.mark.parametrize(
     "url", ["http://ex.com:abc/", "http://ex.com/\x00", "http://xn--a.com/"]
 )
