@@ -127,7 +127,7 @@ Rules        none
 Questions    H7 crash with an open run record: tech, at step ⑤
              H8 slow body read past 10 s: tech, at step ⑤
 
-### V1. Metric: As the owner I want one number per period so that I can drop or promote
+### S9. Metric: As the owner I want one number per period so that I can drop or promote
 
 | AC | Given | When | Then |
 |---|---|---|---|
