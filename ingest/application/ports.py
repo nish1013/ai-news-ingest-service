@@ -4,7 +4,13 @@ from datetime import datetime
 from typing import Protocol
 
 from ingest.domain.article import NewArticle
-from ingest.domain.feed import Feed, FeedDetails, FetchFailure, ParsedFeed
+from ingest.domain.feed import (
+    Feed,
+    FeedDetails,
+    FeedHealth,
+    FetchFailure,
+    ParsedFeed,
+)
 from ingest.domain.run import RunCounts
 
 
@@ -29,6 +35,10 @@ class FeedCatalog(Protocol):
 
     def delete(self, feed_id: int) -> None:
         """Remove a feed. Raise FeedRuleError(has_articles)."""
+        ...
+
+    def save_health(self, feed_id: int, health: FeedHealth) -> None:
+        """Store the health of one feed in one row update."""
         ...
 
 

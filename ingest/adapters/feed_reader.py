@@ -9,15 +9,25 @@ import httpx
 
 from ingest.domain.feed import FeedItem, FetchFailure, ParsedFeed
 
-_TIMEOUT_SECONDS = 10.0
+DEADLINE_SECONDS = 10.0
+MAX_BODY_BYTES = 5 * 1024 * 1024
 
 
 class HttpFeedReader:
     """Reads a feed over HTTP and parses RSS or Atom bytes."""
 
+    def __init__(
+        self,
+        *,
+        deadline_seconds: float = DEADLINE_SECONDS,
+        max_body_bytes: int = MAX_BODY_BYTES,
+    ) -> None:
+        self.deadline_seconds = deadline_seconds
+        self.max_body_bytes = max_body_bytes
+
     def read(self, url: str) -> ParsedFeed | FetchFailure:
         """Return the parsed items, or the reason the read failed."""
-        response = httpx.get(url, timeout=_TIMEOUT_SECONDS, follow_redirects=True)
+        response = httpx.get(url, timeout=DEADLINE_SECONDS, follow_redirects=True)
         response.raise_for_status()
         parsed = feedparser.parse(response.content)
         return ParsedFeed(items=tuple(_item(entry) for entry in parsed.entries))

@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 from django.test import Client
 
@@ -122,6 +124,40 @@ def test_s3_ac2_admin_turns_a_feed_on(admin_client: Client) -> None:
     assert response.status_code == 302  # type: ignore[attr-defined]
     feed.refresh_from_db()
     assert feed.active is True
+
+
+@pytest.mark.django_db
+def test_r11_admin_list_shows_feed_health_with_failing_feeds_first(
+    admin_client: Client,
+) -> None:
+    read_at = datetime(2026, 10, 26, 9, 30, tzinfo=UTC)
+    Feed.objects.create(
+        name="Alpha",
+        url="https://alpha.test/rss",
+        last_status="ok",
+        last_read_at=read_at,
+    )
+    Feed.objects.create(name="New", url="https://new.test/rss")
+    Feed.objects.create(
+        name="OpenAI blog",
+        url=OPENAI_URL,
+        last_status="fetch_failed",
+        last_read_at=read_at,
+        failing_since=datetime(2026, 10, 26, 9, 15, tzinfo=UTC),
+    )
+
+    response = admin_client.get("/admin/ingest/feed/")
+
+    changelist = response.context["cl"]
+    assert [feed.name for feed in changelist.result_list] == [
+        "OpenAI blog",
+        "Alpha",
+        "New",
+    ]
+    assert {"last_status", "last_read_at", "failing_since"} <= set(
+        changelist.list_display
+    )
+    assert b"fetch_failed" in response.content
 
 
 @pytest.mark.django_db

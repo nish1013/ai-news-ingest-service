@@ -63,12 +63,36 @@ class FeedDetails:
         return cls(name=clean_name, url=FeedUrl.from_text(url))
 
 
+class FeedStatus(StrEnum):
+    """The result of the last read of a feed."""
+
+    OK = "ok"
+    FETCH_FAILED = "fetch_failed"
+    PARSE_FAILED = "parse_failed"
+
+
+@dataclass(frozen=True)
+class FeedHealth:
+    """The last read of a feed and the start of its current failure run (R11)."""
+
+    last_status: FeedStatus | None = None
+    last_read_at: datetime | None = None
+    failing_since: datetime | None = None
+
+
 @dataclass(frozen=True)
 class Feed:
     """A registered feed in a pass list."""
 
     id: int
     url: str
+    health: FeedHealth = FeedHealth()
+
+    def health_after(
+        self, result: "ParsedFeed | FetchFailure", at: datetime
+    ) -> FeedHealth:
+        """Return the feed health after a read at the given time."""
+        raise NotImplementedError
 
 
 @dataclass(frozen=True)
@@ -92,3 +116,28 @@ class FetchFailure:
     """A feed read that gave no items, with its reason."""
 
     reason: str
+
+    @classmethod
+    def timeout(cls) -> "FetchFailure":
+        """The feed missed the read deadline."""
+        return cls("timeout")
+
+    @classmethod
+    def http_status(cls, code: int) -> "FetchFailure":
+        """The feed answered with a status other than 2xx."""
+        return cls(f"http_{code}")
+
+    @classmethod
+    def connection(cls) -> "FetchFailure":
+        """The connection to the feed failed."""
+        return cls("connection")
+
+    @classmethod
+    def too_large(cls) -> "FetchFailure":
+        """The feed body is over the size cap."""
+        return cls("too_large")
+
+    @classmethod
+    def parse(cls) -> "FetchFailure":
+        """The body is not RSS or Atom."""
+        return cls("parse")

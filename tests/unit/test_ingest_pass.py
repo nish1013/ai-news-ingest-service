@@ -7,7 +7,14 @@ from ingest.domain.article import (
     ArticleStored,
     CanonicalUrl,
 )
-from ingest.domain.feed import Feed, FeedItem, FetchFailure, ParsedFeed
+from ingest.domain.feed import (
+    Feed,
+    FeedHealth,
+    FeedItem,
+    FeedStatus,
+    FetchFailure,
+    ParsedFeed,
+)
 from ingest.domain.run import RunCounts
 from tests.fakes import (
     PUBLISHED,
@@ -114,6 +121,25 @@ def test_s6_ac5_ac6_bad_link_is_rejected_and_the_next_item_is_stored(
     )
     assert [a.title for a in store.articles] == ["B"]
     assert report.counts.articles_new == 1
+
+
+def test_s5_ac2_pass_reads_the_next_feed_after_a_timeout() -> None:
+    catalog = InMemoryFeedCatalog()
+    catalog.add(Feed(id=1, url="https://openai.test/rss"))
+    catalog.add(Feed(id=2, url="https://batch.test/feed"))
+    reader = StubFeedReader()
+    reader.results["https://openai.test/rss"] = FetchFailure.timeout()
+    reader.results["https://batch.test/feed"] = feed_items(2, 1)
+    store = InMemoryArticleStore()
+
+    report = _pass(catalog, reader, store, FakePassLock(), InMemoryRunLog()).run()
+
+    assert reader.read_urls == ["https://openai.test/rss", "https://batch.test/feed"]
+    assert report.counts == RunCounts(feeds_ok=1, feeds_failed=1, articles_new=1)
+    assert catalog.health(1) == FeedHealth(
+        FeedStatus.FETCH_FAILED, FixedClock().at, FixedClock().at
+    )
+    assert catalog.health(2) == FeedHealth(FeedStatus.OK, FixedClock().at, None)
 
 
 def test_s7_ac1_run_record_counts_feeds_and_new_articles_and_frees_the_lock() -> None:
