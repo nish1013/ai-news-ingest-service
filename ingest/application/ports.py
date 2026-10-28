@@ -15,6 +15,10 @@ from ingest.domain.feed import (
 from ingest.domain.run import RunCounts
 
 
+class ArticleBatchError(Exception):
+    """The store refused a batch. None of its articles are stored."""
+
+
 class FeedCatalog(Protocol):
     """The registered feeds."""
 
@@ -55,7 +59,10 @@ class ArticleStore(Protocol):
     """The stored articles."""
 
     def batch(self) -> AbstractContextManager[None]:
-        """Commit the articles added inside as one unit, or none of them."""
+        """Commit the articles added inside as one unit, or none of them.
+
+        Raise ArticleBatchError when the store refuses the unit.
+        """
         ...
 
     def add(self, article: NewArticle) -> bool:

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from ingest.application.ports import (
+    ArticleBatchError,
     ArticleStore,
     Clock,
     FeedCatalog,
@@ -78,9 +79,14 @@ class IngestPass:
             if isinstance(result, FetchFailure):
                 feeds_failed += 1
                 continue
+            try:
+                with self._store.batch():
+                    outcomes = [self._ingest(feed, item) for item in result.items]
+            except ArticleBatchError:
+                feeds_failed += 1
+                continue
             feeds_ok += 1
-            with self._store.batch():
-                articles.extend([self._ingest(feed, item) for item in result.items])
+            articles.extend(outcomes)
         counts = RunCounts(
             feeds_ok=feeds_ok,
             feeds_failed=feeds_failed,

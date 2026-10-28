@@ -9,6 +9,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 
 from ingest.adapters.orm import models
+from ingest.application.ports import ArticleBatchError
 from ingest.domain.article import NewArticle
 from ingest.domain.feed import (
     Feed,
@@ -74,8 +75,11 @@ class DjangoArticleStore:
     """Articles in the article table."""
 
     def batch(self) -> AbstractContextManager[None]:
-        """Commit the articles added inside in one transaction."""
-        return transaction.atomic()
+        """Commit the articles added inside in one transaction.
+
+        Raise ArticleBatchError when the commit is refused, as when the feed is gone.
+        """
+        return _refused_as_batch_error()
 
     def add(self, article: NewArticle) -> bool:
         """Store one article. Return False when its canonical URL is stored."""
@@ -118,6 +122,15 @@ def _health(row: models.Feed) -> FeedHealth:
         last_read_at=row.last_read_at,
         failing_since=row.failing_since,
     )
+
+
+@contextmanager
+def _refused_as_batch_error() -> Iterator[None]:
+    try:
+        with transaction.atomic():
+            yield
+    except IntegrityError as err:
+        raise ArticleBatchError from err
 
 
 @contextmanager
