@@ -35,7 +35,8 @@ docker compose up -d db
 | `POSTGRES_USER` | `postgres` |
 | `POSTGRES_PASSWORD` | `ingest` |
 | `DJANGO_SECRET_KEY` | A local key. Set a real key outside a laptop. |
-| `DJANGO_DEBUG` | `1`. Set `0` outside a laptop. |
+| `DJANGO_DEBUG` | `1`. Set `0` outside a laptop, together with `DJANGO_ALLOWED_HOSTS`. |
+| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1`. With debug off, a request to any other host gets 400. Set the host names, comma separated. |
 
 ## Checks
 
