@@ -1,9 +1,11 @@
 """Article values: the canonical URL rule, a new article and its outcomes."""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from urllib.parse import unquote_plus, urlsplit, urlunsplit
+
+ON_TIME_LIMIT = timedelta(minutes=30)
 
 _LINK_SCHEMES = frozenset({"http", "https"})
 _TRACKER_PREFIX = "utm_"
@@ -68,6 +70,7 @@ class NewArticle:
     canonical_url: CanonicalUrl
     title: str
     published_at: datetime | None
+    stored_at: datetime
 
 
 @dataclass(frozen=True)

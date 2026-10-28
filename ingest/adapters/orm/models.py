@@ -29,7 +29,7 @@ class Article(models.Model):
     canonical_url = models.CharField(max_length=2000)
     title = models.TextField()
     published_at = models.DateTimeField(null=True)
-    stored_at = models.DateTimeField(auto_now_add=True)
+    stored_at = models.DateTimeField()
 
     class Meta:
         constraints = [

@@ -90,6 +90,7 @@ class IngestPass:
             canonical_url=canonical_url,
             title=item.title,
             published_at=item.published_at,
+            stored_at=self._clock.now(),
         )
         if self._store.add(article):
             return ArticleStored(article.canonical_url)

@@ -2,6 +2,7 @@ import pytest
 from django.test import Client
 
 from ingest.adapters.orm.models import Article, Feed
+from tests.fakes import FixedClock
 
 ADD_URL = "/admin/ingest/feed/add/"
 BATCH_URL = "https://www.deeplearning.ai/the-batch/feed/"
@@ -140,7 +141,10 @@ def test_s8_ac2_admin_keeps_a_feed_with_articles(admin_client: Client) -> None:
     feed = Feed.objects.create(name="OpenAI blog", url=OPENAI_URL)
     for n in range(12):
         Article.objects.create(
-            feed=feed, canonical_url=f"{OPENAI_URL}/{n}", title=f"Post {n}"
+            feed=feed,
+            canonical_url=f"{OPENAI_URL}/{n}",
+            title=f"Post {n}",
+            stored_at=FixedClock().at,
         )
 
     response = admin_client.post(

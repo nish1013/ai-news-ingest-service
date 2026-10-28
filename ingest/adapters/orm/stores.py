@@ -67,6 +67,7 @@ class DjangoArticleStore:
                     canonical_url=article.canonical_url.value,
                     title=article.title,
                     published_at=article.published_at,
+                    stored_at=article.stored_at,
                 )
         except IntegrityError as err:
             if _violates(err, models.ARTICLE_URL_UNIQUE):

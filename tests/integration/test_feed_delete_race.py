@@ -15,6 +15,7 @@ from ingest.application.feed_commands import (
 )
 from ingest.domain.article import CanonicalUrl, NewArticle
 from ingest.domain.feed import FeedRuleReason
+from tests.fakes import FixedClock
 
 WAIT_SECONDS = 10
 
@@ -37,6 +38,7 @@ class _ArticleWriter:
                         canonical_url=CanonicalUrl.from_link("https://example.com/a"),
                         title="First article",
                         published_at=None,
+                        stored_at=FixedClock().at,
                     )
                 )
                 self.inserted.set()

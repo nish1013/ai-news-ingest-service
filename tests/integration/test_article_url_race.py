@@ -8,6 +8,7 @@ from django.db import connection, transaction
 from ingest.adapters.orm.models import Article, Feed
 from ingest.adapters.orm.stores import DjangoArticleStore
 from ingest.domain.article import CanonicalUrl, NewArticle
+from tests.fakes import FixedClock
 
 WAIT_SECONDS = 10
 URL = "https://example.com/a"
@@ -32,6 +33,7 @@ class _Writer:
                         canonical_url=CanonicalUrl.from_link(URL),
                         title=self.title,
                         published_at=None,
+                        stored_at=FixedClock().at,
                     )
                 )
                 self.inserted.set()
