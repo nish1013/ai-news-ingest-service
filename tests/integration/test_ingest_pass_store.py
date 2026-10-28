@@ -1,3 +1,5 @@
+from hashlib import sha256
+
 import pytest
 
 from ingest.adapters.orm.models import Article, Feed, RunRecord
@@ -105,6 +107,36 @@ def test_s6_ac3_same_link_twice_in_one_body_stores_once_and_skips_once() -> None
     url = CanonicalUrl("https://example.com/a")
     assert report.articles == (ArticleStored(url), DuplicateArticleSkipped(url))
     assert Article.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_r7_long_link_is_stored_and_the_pass_continues() -> None:
+    feed = Feed.objects.create(name="The Batch", url="https://batch.test/feed")
+    long_link = _long_link(5000)
+    reader = StubFeedReader()
+    reader.results[feed.url] = ParsedFeed(
+        items=tuple(
+            FeedItem(link=link, title="T", published_at=PUBLISHED)
+            for link in (long_link, long_link, "https://example.com/next")
+        )
+    )
+
+    report = _run(reader)
+
+    long_url = CanonicalUrl(long_link)
+    assert report.articles == (
+        ArticleStored(long_url),
+        DuplicateArticleSkipped(long_url),
+        ArticleStored(CanonicalUrl("https://example.com/next")),
+    )
+    assert Article.objects.filter(canonical_url=long_link).exists()
+    assert Article.objects.count() == 2
+
+
+def _long_link(length: int) -> str:
+    prefix = "https://example.com/"
+    digests = "".join(sha256(str(n).encode()).hexdigest() for n in range(length // 64))
+    return prefix + digests[: length - len(prefix)]
 
 
 def _one_item(link: str, title: str) -> ParsedFeed:
