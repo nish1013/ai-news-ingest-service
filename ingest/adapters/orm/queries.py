@@ -5,8 +5,7 @@ from datetime import datetime
 from django.db.models import Count, F, Q, QuerySet
 
 from ingest.adapters.orm.models import Article
-from ingest.domain.article import ON_TIME_LIMIT
-from ingest.domain.metric import FUTURE_DATE_TOLERANCE, OnTimeMetric
+from ingest.domain.metric import FUTURE_DATE_TOLERANCE, ON_TIME_LIMIT, OnTimeMetric
 
 _EXCLUDED = Q(published_at__isnull=True) | Q(
     published_at__gt=F("stored_at") + FUTURE_DATE_TOLERANCE

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
+ON_TIME_LIMIT = timedelta(minutes=30)
 FUTURE_DATE_TOLERANCE = timedelta(minutes=5)
 EXCLUDED_LIMIT_PERCENT = 5
 
