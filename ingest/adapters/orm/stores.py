@@ -37,6 +37,14 @@ class DjangoFeedCatalog:
                 name=details.name, url=details.url.value
             )
 
+    def set_active(self, feed_id: int, *, active: bool) -> None:
+        """Store the active flag of a feed."""
+        raise NotImplementedError
+
+    def delete(self, feed_id: int) -> None:
+        """Remove a feed. Raise FeedRuleError(has_articles)."""
+        raise NotImplementedError
+
 
 class DjangoArticleStore:
     """Articles in the article table."""

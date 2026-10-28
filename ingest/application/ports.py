@@ -23,6 +23,14 @@ class FeedCatalog(Protocol):
         """Store a new name and URL. Raise FeedRuleError(url_taken)."""
         ...
 
+    def set_active(self, feed_id: int, *, active: bool) -> None:
+        """Store the active flag of a feed."""
+        ...
+
+    def delete(self, feed_id: int) -> None:
+        """Remove a feed. Raise FeedRuleError(has_articles)."""
+        ...
+
 
 class FeedReader(Protocol):
     """Reads one feed URL from its publisher."""

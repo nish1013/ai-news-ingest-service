@@ -1,4 +1,4 @@
-"""Feed commands of the owner: register and edit a feed."""
+"""Feed commands of the owner: register, edit, turn on or off, delete."""
 
 from dataclasses import dataclass
 
@@ -27,6 +27,35 @@ class FeedRejected:
     reason: FeedRuleReason
 
 
+@dataclass(frozen=True)
+class FeedDeactivated:
+    """The next pass does not read the feed."""
+
+    feed_id: int
+
+
+@dataclass(frozen=True)
+class FeedReactivated:
+    """The next pass reads the feed."""
+
+    feed_id: int
+
+
+@dataclass(frozen=True)
+class FeedDeleted:
+    """The feed is gone from the catalog."""
+
+    feed_id: int
+
+
+@dataclass(frozen=True)
+class FeedDeleteRefused:
+    """The feed stays, with its articles."""
+
+    feed_id: int
+    reason: FeedRuleReason
+
+
 class FeedCommands:
     """Changes the feed catalog under the feed rules."""
 
@@ -48,3 +77,13 @@ class FeedCommands:
         except FeedRuleError as err:
             return FeedRejected(err.reason)
         return FeedEdited(feed_id)
+
+    def set_active(
+        self, feed_id: int, *, active: bool
+    ) -> FeedDeactivated | FeedReactivated:
+        """Turn a feed on or off for the next pass."""
+        raise NotImplementedError
+
+    def delete(self, feed_id: int) -> FeedDeleted | FeedDeleteRefused:
+        """Remove a feed that has no stored articles."""
+        raise NotImplementedError
