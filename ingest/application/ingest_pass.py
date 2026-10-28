@@ -32,6 +32,11 @@ class PassReport:
     counts: RunCounts
 
 
+@dataclass(frozen=True)
+class IngestPassSkipped:
+    """Another pass holds the pass lock. The tick changes no data."""
+
+
 class IngestPass:
     """Runs one ingest pass under the pass lock."""
 
