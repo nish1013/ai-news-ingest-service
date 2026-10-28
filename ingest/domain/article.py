@@ -54,7 +54,7 @@ class CanonicalUrl:
             urlunsplit(
                 (
                     parts.scheme.lower(),
-                    parts.netloc.lower(),
+                    _lower_host(parts.netloc),
                     parts.path.rstrip("/"),
                     query,
                     "",
@@ -97,6 +97,11 @@ class ArticleRejected:
 
 
 ArticleOutcome = ArticleStored | DuplicateArticleSkipped | ArticleRejected
+
+
+def _lower_host(netloc: str) -> str:
+    userinfo, at, host_port = netloc.rpartition("@")
+    return f"{userinfo}{at}{host_port.lower()}"
 
 
 def _is_tracker(pair: str) -> bool:
