@@ -40,12 +40,12 @@ ingest/                     one Django app, one context
 
 | PR | Delivers | Criteria | Proves | Risk |
 |---|---|---|---|---|
-| PR1 | Thin slice: skeleton, CI, layers contract, one feed to one stored article | S1 AC1, S4 AC1, S5 AC1, S6 AC1, S7 AC1 | | normal: no rule two requests can break |
-| PR2 | Feed rules in admin: URL checks, unique URL, on and off, protected delete | S1 AC2-AC5, S2 AC1-AC4, S3 AC1-AC2, S8 AC1-AC2 | R1, R9, R10 | high: R10 race |
-| PR3 | Canonical URL and one article per URL | S6 AC2-AC11 | R6, R7, R8 | high: R6 race |
-| PR4 | Feed failures and feed health in admin | S5 AC2-AC11 | R4, R5, R11 | normal: one feed row per update |
-| PR5 | One pass at a time, fixed feed list, crash safety | S3 AC3, S4 AC2-AC5, S7 AC2 | R3 | high: R3 race |
-| PR6 | Metric command and operating notes in the README | V1 AC1-AC3 | | normal: read only |
+| 1 | Thin slice: skeleton, CI, layers contract, one feed to one stored article | S1 AC1, S4 AC1, S5 AC1, S6 AC1, S7 AC1 | | normal: no rule two requests can break |
+| 2 | Feed rules in admin: URL checks, unique URL, on and off, protected delete | S1 AC2-AC5, S2 AC1-AC4, S3 AC1-AC2, S8 AC1-AC2 | R1, R9, R10 | high: R10 race |
+| 3 | Canonical URL and one article per URL | S6 AC2-AC11 | R6, R7, R8 | high: R6 race |
+| 4 | Feed failures and feed health in admin | S5 AC2-AC11 | R4, R5, R11 | normal: one feed row per update |
+| 5 | One pass at a time, fixed feed list, crash safety | S3 AC3, S4 AC2-AC5, S7 AC2 | R3 | high: R3 race |
+| 6 | Metric command and operating notes in the README | S9 AC1-AC3 | | normal: read only |
 
 ## Tests
 
