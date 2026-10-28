@@ -3,9 +3,11 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import unquote_plus, urlsplit, urlunsplit
 
-_TRACKING_PREFIX = "utm_"
+_LINK_SCHEMES = frozenset({"http", "https"})
+_TRACKER_PREFIX = "utm_"
+_TRACKERS = frozenset({"fbclid", "gclid", "mc_cid", "mc_eid"})
 
 
 class ArticleRejectReason(StrEnum):
@@ -31,20 +33,27 @@ class CanonicalUrl:
 
     @classmethod
     def from_link(cls, link: str) -> "CanonicalUrl":
-        """Return the canonical form of an item link."""
-        parts = urlsplit(link)
-        query = [
-            (name, value)
-            for name, value in parse_qsl(parts.query, keep_blank_values=True)
-            if not name.startswith(_TRACKING_PREFIX)
-        ]
+        """Return the canonical form of an item link, or raise ArticleRuleError."""
+        text = link.strip()
+        if not text:
+            raise ArticleRuleError(ArticleRejectReason.LINK_MISSING)
+        try:
+            parts = urlsplit(text)
+            absolute = parts.scheme.lower() in _LINK_SCHEMES and bool(parts.hostname)
+        except ValueError as err:
+            raise ArticleRuleError(ArticleRejectReason.LINK_NOT_ABSOLUTE) from err
+        if not absolute:
+            raise ArticleRuleError(ArticleRejectReason.LINK_NOT_ABSOLUTE)
+        query = "&".join(
+            pair for pair in parts.query.split("&") if pair and not _is_tracker(pair)
+        )
         return cls(
             urlunsplit(
                 (
                     parts.scheme.lower(),
                     parts.netloc.lower(),
                     parts.path.rstrip("/"),
-                    urlencode(query),
+                    query,
                     "",
                 )
             )
@@ -84,3 +93,8 @@ class ArticleRejected:
 
 
 ArticleOutcome = ArticleStored | DuplicateArticleSkipped | ArticleRejected
+
+
+def _is_tracker(pair: str) -> bool:
+    name = unquote_plus(pair.partition("=")[0])
+    return name.startswith(_TRACKER_PREFIX) or name in _TRACKERS

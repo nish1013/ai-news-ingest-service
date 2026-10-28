@@ -12,6 +12,8 @@ from ingest.application.ports import (
 )
 from ingest.domain.article import (
     ArticleOutcome,
+    ArticleRejected,
+    ArticleRuleError,
     ArticleStored,
     CanonicalUrl,
     DuplicateArticleSkipped,
@@ -79,9 +81,13 @@ class IngestPass:
         return PassReport(feeds=feeds, articles=tuple(articles), counts=counts)
 
     def _ingest(self, feed: Feed, item: FeedItem) -> ArticleOutcome:
+        try:
+            canonical_url = CanonicalUrl.from_link(item.link)
+        except ArticleRuleError as err:
+            return ArticleRejected(item.link, err.reason)
         article = NewArticle(
             feed_id=feed.id,
-            canonical_url=CanonicalUrl.from_link(item.link),
+            canonical_url=canonical_url,
             title=item.title,
             published_at=item.published_at,
         )
