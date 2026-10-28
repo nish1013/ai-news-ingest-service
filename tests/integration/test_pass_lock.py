@@ -23,13 +23,6 @@ from tests.integration.lock_probe import other_session, take_pass_lock
 WAIT_SECONDS = 10
 
 
-@pytest.fixture
-def no_endless_lock_wait() -> None:
-    # A waiting pass fails instead of hanging. The test transaction undoes the SET.
-    with connection.cursor() as cursor:
-        cursor.execute("SET lock_timeout = '2s'")
-
-
 @dataclass
 class _HoldingReader:
     """Keeps the pass inside its feed read until told to go on."""
@@ -53,9 +46,7 @@ def _ingest_pass(reader: FeedReader) -> IngestPass:
 
 
 @pytest.mark.django_db
-def test_s4_ac2_lock_held_pass_is_skipped_with_one_line_and_no_run_record(
-    no_endless_lock_wait: None,
-) -> None:
+def test_s4_ac2_lock_held_pass_is_skipped_with_one_line_and_no_run_record() -> None:
     feed = Feed.objects.create(name="The Batch", url="https://batch.test/feed")
     out = StringIO()
 
@@ -101,9 +92,7 @@ def test_s4_ac3_two_ticks_at_once_one_pass_starts_one_is_skipped() -> None:
 
 
 @pytest.mark.django_db
-def test_s4_ac4_dead_session_frees_the_lock_and_the_next_pass_starts(
-    no_endless_lock_wait: None,
-) -> None:
+def test_s4_ac4_dead_session_frees_the_lock_and_the_next_pass_starts() -> None:
     with other_session() as other:
         assert take_pass_lock(other)
         assert isinstance(_ingest_pass(StubFeedReader()).run(), IngestPassSkipped)
