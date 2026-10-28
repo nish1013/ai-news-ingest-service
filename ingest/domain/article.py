@@ -2,6 +2,9 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+_TRACKING_PREFIX = "utm_"
 
 
 @dataclass(frozen=True)
@@ -13,7 +16,23 @@ class CanonicalUrl:
     @classmethod
     def from_link(cls, link: str) -> "CanonicalUrl":
         """Return the canonical form of an item link."""
-        raise NotImplementedError
+        parts = urlsplit(link)
+        query = [
+            (name, value)
+            for name, value in parse_qsl(parts.query, keep_blank_values=True)
+            if not name.startswith(_TRACKING_PREFIX)
+        ]
+        return cls(
+            urlunsplit(
+                (
+                    parts.scheme.lower(),
+                    parts.netloc.lower(),
+                    parts.path.rstrip("/"),
+                    urlencode(query),
+                    "",
+                )
+            )
+        )
 
 
 @dataclass(frozen=True)

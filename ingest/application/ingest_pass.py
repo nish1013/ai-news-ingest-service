@@ -10,7 +10,8 @@ from ingest.application.ports import (
     PassLock,
     RunLog,
 )
-from ingest.domain.feed import Feed
+from ingest.domain.article import CanonicalUrl, NewArticle
+from ingest.domain.feed import Feed, FeedItem, FetchFailure
 from ingest.domain.run import RunCounts
 
 
@@ -44,4 +45,36 @@ class IngestPass:
 
     def run(self) -> PassReport:
         """Run one pass and write its run record."""
-        raise NotImplementedError
+        self._lock.acquire()
+        try:
+            return self._run_locked()
+        finally:
+            self._lock.release()
+
+    def _run_locked(self) -> PassReport:
+        feeds = tuple(self._catalog.active_feeds())
+        run_id = self._run_log.start(self._clock.now())
+        feeds_ok = feeds_failed = articles_new = 0
+        for feed in feeds:
+            result = self._reader.read(feed.url)
+            if isinstance(result, FetchFailure):
+                feeds_failed += 1
+                continue
+            feeds_ok += 1
+            for item in result.items:
+                self._store.add(_new_article(feed, item))
+                articles_new += 1
+        counts = RunCounts(
+            feeds_ok=feeds_ok, feeds_failed=feeds_failed, articles_new=articles_new
+        )
+        self._run_log.finish(run_id, counts, self._clock.now())
+        return PassReport(feeds=feeds, counts=counts)
+
+
+def _new_article(feed: Feed, item: FeedItem) -> NewArticle:
+    return NewArticle(
+        feed_id=feed.id,
+        canonical_url=CanonicalUrl.from_link(item.link),
+        title=item.title,
+        published_at=item.published_at,
+    )
