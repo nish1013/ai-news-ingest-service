@@ -5,7 +5,7 @@ from typing import Any
 from django import forms
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied
-from django.db.models import QuerySet
+from django.db.models import F, QuerySet
 from django.http import HttpRequest
 
 from ingest.adapters.orm.models import Feed
@@ -67,10 +67,28 @@ class FeedForm(forms.ModelForm):
 
 @admin.register(Feed)
 class FeedAdmin(admin.ModelAdmin):
-    """Feed list and form. A new feed is active, so the add form hides the flag."""
+    """Feed list and form. A new feed is active, so the add form hides the flag.
+
+    The list shows feed health, failing feeds first (D16).
+    """
 
     form = FeedForm
-    list_display = ("name", "url", "active")
+    list_display = (
+        "name",
+        "url",
+        "active",
+        "last_status",
+        "last_read_at",
+        "failing_since",
+    )
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Feed]:
+        """Return the feeds, failing feeds first, the longest failing at the top."""
+        return (
+            super()
+            .get_queryset(request)
+            .order_by(F("failing_since").asc(nulls_last=True), "name")
+        )
 
     def get_fields(
         self, request: HttpRequest, obj: Feed | None = None

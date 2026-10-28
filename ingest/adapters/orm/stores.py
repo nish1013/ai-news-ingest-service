@@ -10,7 +10,14 @@ from django.db.models import ProtectedError
 
 from ingest.adapters.orm import models
 from ingest.domain.article import NewArticle
-from ingest.domain.feed import Feed, FeedDetails, FeedRuleError, FeedRuleReason
+from ingest.domain.feed import (
+    Feed,
+    FeedDetails,
+    FeedHealth,
+    FeedRuleError,
+    FeedRuleReason,
+    FeedStatus,
+)
 from ingest.domain.run import RunCounts
 
 
@@ -20,7 +27,7 @@ class DjangoFeedCatalog:
     def active_feeds(self) -> list[Feed]:
         """Return the active feeds."""
         return [
-            Feed(id=row.id, url=row.url)
+            Feed(id=row.id, url=row.url, health=_health(row))
             for row in models.Feed.objects.filter(active=True).order_by("id")
         ]
 
@@ -53,6 +60,14 @@ class DjangoFeedCatalog:
             if _is_article_reference(err):
                 raise FeedRuleError(FeedRuleReason.HAS_ARTICLES) from err
             raise
+
+    def save_health(self, feed_id: int, health: FeedHealth) -> None:
+        """Store the health of one feed in one row update."""
+        models.Feed.objects.filter(id=feed_id).update(
+            last_status=health.last_status or "",
+            last_read_at=health.last_read_at,
+            failing_since=health.failing_since,
+        )
 
 
 class DjangoArticleStore:
@@ -91,6 +106,14 @@ class DjangoRunLog:
             feeds_failed=counts.feeds_failed,
             articles_new=counts.articles_new,
         )
+
+
+def _health(row: models.Feed) -> FeedHealth:
+    return FeedHealth(
+        last_status=FeedStatus(row.last_status) if row.last_status else None,
+        last_read_at=row.last_read_at,
+        failing_since=row.failing_since,
+    )
 
 
 @contextmanager

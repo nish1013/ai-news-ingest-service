@@ -1,11 +1,14 @@
 """Feed values: feed rules, a registered feed and the result of one read."""
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from urllib.parse import urlsplit
 
 _FEED_SCHEMES = frozenset({"http", "https"})
+_FAILURE_REASONS = frozenset({"timeout", "connection", "too_large", "parse"})
+_HTTP_REASON = re.compile(r"http_[1-5][0-9]{2}")
 
 
 class FeedRuleReason(StrEnum):
@@ -91,8 +94,11 @@ class Feed:
     def health_after(
         self, result: "ParsedFeed | FetchFailure", at: datetime
     ) -> FeedHealth:
-        """Return the feed health after a read at the given time."""
-        raise NotImplementedError
+        """Return the feed health after a read at the given time (R11)."""
+        status = result.status
+        if status is FeedStatus.OK:
+            return FeedHealth(status, at, None)
+        return FeedHealth(status, at, self.health.failing_since or at)
 
 
 @dataclass(frozen=True)
@@ -110,12 +116,30 @@ class ParsedFeed:
 
     items: tuple[FeedItem, ...]
 
+    @property
+    def status(self) -> FeedStatus:
+        """A parsed feed is a good read."""
+        return FeedStatus.OK
+
 
 @dataclass(frozen=True)
 class FetchFailure:
-    """A feed read that gave no items, with its reason."""
+    """A feed read that gave no items, with its reason (R4, R5)."""
 
     reason: str
+
+    def __post_init__(self) -> None:
+        if self.reason not in _FAILURE_REASONS and not _HTTP_REASON.fullmatch(
+            self.reason
+        ):
+            raise ValueError(f"unknown fetch failure reason: {self.reason!r}")
+
+    @property
+    def status(self) -> FeedStatus:
+        """A body that is not RSS or Atom is a parse failure, the rest fetch."""
+        if self.reason == "parse":
+            return FeedStatus.PARSE_FAILED
+        return FeedStatus.FETCH_FAILED
 
     @classmethod
     def timeout(cls) -> "FetchFailure":

@@ -66,7 +66,9 @@ class IngestPass:
         feeds_ok = feeds_failed = 0
         articles: list[ArticleOutcome] = []
         for feed in feeds:
+            read_at = self._clock.now()
             result = self._reader.read(feed.url)
+            self._catalog.save_health(feed.id, feed.health_after(result, read_at))
             if isinstance(result, FetchFailure):
                 feeds_failed += 1
                 continue

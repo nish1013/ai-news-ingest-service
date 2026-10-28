@@ -27,10 +27,38 @@ class HttpFeedReader:
 
     def read(self, url: str) -> ParsedFeed | FetchFailure:
         """Return the parsed items, or the reason the read failed."""
-        response = httpx.get(url, timeout=DEADLINE_SECONDS, follow_redirects=True)
-        response.raise_for_status()
-        parsed = feedparser.parse(response.content)
-        return ParsedFeed(items=tuple(_item(entry) for entry in parsed.entries))
+        try:
+            body = self._fetch(url)
+        except httpx.TimeoutException:
+            return FetchFailure.timeout()
+        except httpx.HTTPError:
+            return FetchFailure.connection()
+        if isinstance(body, FetchFailure):
+            return body
+        return _parse(body)
+
+    def _fetch(self, url: str) -> bytes | FetchFailure:
+        started = time.monotonic()
+        with httpx.stream(
+            "GET", url, timeout=self.deadline_seconds, follow_redirects=True
+        ) as response:
+            if not response.is_success:
+                return FetchFailure.http_status(response.status_code)
+            body = bytearray()
+            for chunk in response.iter_bytes():
+                body += chunk
+                if len(body) > self.max_body_bytes:
+                    return FetchFailure.too_large()
+                if time.monotonic() - started > self.deadline_seconds:
+                    return FetchFailure.timeout()
+        return bytes(body)
+
+
+def _parse(body: bytes) -> ParsedFeed | FetchFailure:
+    parsed = feedparser.parse(body)
+    if not parsed.get("version"):
+        return FetchFailure.parse()
+    return ParsedFeed(items=tuple(_item(entry) for entry in parsed.entries))
 
 
 def _item(entry: Mapping[str, object]) -> FeedItem:
