@@ -1,10 +1,18 @@
-"""Article values: the canonical URL rule and a new article."""
+"""Article values: the canonical URL rule, a new article and its outcomes."""
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 _TRACKING_PREFIX = "utm_"
+
+
+class ArticleRejectReason(StrEnum):
+    """The link rule an item broke."""
+
+    LINK_MISSING = "link_missing"
+    LINK_NOT_ABSOLUTE = "link_not_absolute"
 
 
 @dataclass(frozen=True)
@@ -43,3 +51,28 @@ class NewArticle:
     canonical_url: CanonicalUrl
     title: str
     published_at: datetime | None
+
+
+@dataclass(frozen=True)
+class ArticleStored:
+    """The store keeps a new article."""
+
+    canonical_url: CanonicalUrl
+
+
+@dataclass(frozen=True)
+class DuplicateArticleSkipped:
+    """The store has the canonical URL. The first copy stays as it is."""
+
+    canonical_url: CanonicalUrl
+
+
+@dataclass(frozen=True)
+class ArticleRejected:
+    """The item link broke a link rule. Nothing is stored."""
+
+    link: str
+    reason: ArticleRejectReason
+
+
+ArticleOutcome = ArticleStored | DuplicateArticleSkipped | ArticleRejected

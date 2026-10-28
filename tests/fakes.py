@@ -46,8 +46,9 @@ class StubFeedReader:
 class InMemoryArticleStore:
     articles: list[NewArticle] = field(default_factory=list)
 
-    def add(self, article: NewArticle) -> None:
+    def add(self, article: NewArticle) -> bool:
         self.articles.append(article)
+        return True
 
 
 @dataclass

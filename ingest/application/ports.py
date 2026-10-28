@@ -43,8 +43,8 @@ class FeedReader(Protocol):
 class ArticleStore(Protocol):
     """The stored articles."""
 
-    def add(self, article: NewArticle) -> None:
-        """Store one article."""
+    def add(self, article: NewArticle) -> bool:
+        """Store one article. Return False when its canonical URL is stored."""
         ...
 
 

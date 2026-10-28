@@ -58,14 +58,15 @@ class DjangoFeedCatalog:
 class DjangoArticleStore:
     """Articles in the article table."""
 
-    def add(self, article: NewArticle) -> None:
-        """Store one article."""
+    def add(self, article: NewArticle) -> bool:
+        """Store one article. Return False when its canonical URL is stored."""
         models.Article.objects.create(
             feed_id=article.feed_id,
             canonical_url=article.canonical_url.value,
             title=article.title,
             published_at=article.published_at,
         )
+        return True
 
 
 class DjangoRunLog:
