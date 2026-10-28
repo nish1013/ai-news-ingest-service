@@ -197,6 +197,17 @@ def test_r4_refused_connection_fails_as_connection(
     assert reader.read(publish.refused()) == FetchFailure.connection()
 
 
+@pytest.mark.parametrize(
+    "url", ["http://ex.com:abc/", "http://ex.com/\x00", "http://xn--a.com/"]
+)
+def test_r9_url_the_client_rejects_before_the_request_fails_as_connection(
+    url: str,
+) -> None:
+    reader = HttpFeedReader(deadline_seconds=DEADLINE_SECONDS)
+
+    assert reader.read(url) == FetchFailure.connection()
+
+
 def test_d20_reader_defaults_are_a_10_s_deadline_and_a_5_mb_cap() -> None:
     reader = HttpFeedReader()
 
