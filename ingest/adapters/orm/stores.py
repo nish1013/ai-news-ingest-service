@@ -98,11 +98,7 @@ def _url_taken_as_rule_error() -> Iterator[None]:
         with transaction.atomic():
             yield
     except IntegrityError as err:
-        cause = err.__cause__
-        if (
-            isinstance(cause, psycopg.errors.UniqueViolation)
-            and cause.diag.constraint_name == models.FEED_URL_UNIQUE
-        ):
+        if _violates(err, models.FEED_URL_UNIQUE):
             raise FeedRuleError(FeedRuleReason.URL_TAKEN) from err
         raise
 
