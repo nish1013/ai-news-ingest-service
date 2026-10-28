@@ -1,0 +1,55 @@
+[project]
+name = "ai-news-ingest-service"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["config", "ingest"]
+plugins = ["mypy_django_plugin.main"]
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+module = ["feedparser", "feedparser.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["ingest.migrations.*"]
+ignore_errors = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+testpaths = ["tests"]
+addopts = "--strict-markers"
+
+[tool.importlinter]
+root_package = "ingest"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Domain imports no framework, HTTP or feed parser"
+type = "forbidden"
+source_modules = ["ingest.domain"]
+forbidden_modules = ["django", "httpx", "feedparser"]
+
+[[tool.importlinter.contracts]]
+name = "Layers: adapters over application over domain"
+type = "layers"
+layers = ["ingest.adapters", "ingest.application", "ingest.domain"]
