@@ -15,6 +15,14 @@ class ArticleRejectReason(StrEnum):
     LINK_NOT_ABSOLUTE = "link_not_absolute"
 
 
+class ArticleRuleError(Exception):
+    """An item link broke a link rule."""
+
+    def __init__(self, reason: ArticleRejectReason) -> None:
+        super().__init__(reason.value)
+        self.reason = reason
+
+
 @dataclass(frozen=True)
 class CanonicalUrl:
     """An item link in one form per page."""
