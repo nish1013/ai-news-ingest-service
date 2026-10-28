@@ -57,6 +57,7 @@ def _add_articles(feed: Feed, count: int) -> None:
             canonical_url=f"{feed.url}/{n}",
             title=f"Post {n}",
             published_at=datetime(2026, 10, 26, 9, 0, tzinfo=UTC),
+            stored_at=FixedClock().at,
         )
 
 

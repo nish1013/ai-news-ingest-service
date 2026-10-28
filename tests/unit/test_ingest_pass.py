@@ -1,4 +1,12 @@
+import pytest
+
 from ingest.application.ingest_pass import IngestPass
+from ingest.domain.article import (
+    ArticleRejected,
+    ArticleRejectReason,
+    ArticleStored,
+    CanonicalUrl,
+)
 from ingest.domain.feed import Feed, FeedItem, FetchFailure, ParsedFeed
 from ingest.domain.run import RunCounts
 from tests.fakes import (
@@ -74,6 +82,38 @@ def test_pass_stores_the_feed_id_title_and_published_at() -> None:
         "GPT-6 is out",
         PUBLISHED,
     )
+
+
+@pytest.mark.parametrize(
+    ("link", "reason"),
+    [
+        ("", ArticleRejectReason.LINK_MISSING),
+        ("/news/42", ArticleRejectReason.LINK_NOT_ABSOLUTE),
+    ],
+    ids=["s6_ac5_no_link", "s6_ac6_relative_link"],
+)
+def test_s6_ac5_ac6_bad_link_is_rejected_and_the_next_item_is_stored(
+    link: str, reason: ArticleRejectReason
+) -> None:
+    catalog = InMemoryFeedCatalog()
+    catalog.add(Feed(id=1, url="https://batch.test/feed"))
+    reader = StubFeedReader()
+    reader.results["https://batch.test/feed"] = ParsedFeed(
+        items=(
+            FeedItem(link=link, title="Bad", published_at=PUBLISHED),
+            FeedItem(link="https://example.com/b", title="B", published_at=PUBLISHED),
+        )
+    )
+    store = InMemoryArticleStore()
+
+    report = _pass(catalog, reader, store, FakePassLock(), InMemoryRunLog()).run()
+
+    assert report.articles == (
+        ArticleRejected(link, reason),
+        ArticleStored(CanonicalUrl("https://example.com/b")),
+    )
+    assert [a.title for a in store.articles] == ["B"]
+    assert report.counts.articles_new == 1
 
 
 def test_s7_ac1_run_record_counts_feeds_and_new_articles_and_frees_the_lock() -> None:

@@ -58,14 +58,22 @@ class DjangoFeedCatalog:
 class DjangoArticleStore:
     """Articles in the article table."""
 
-    def add(self, article: NewArticle) -> None:
-        """Store one article."""
-        models.Article.objects.create(
-            feed_id=article.feed_id,
-            canonical_url=article.canonical_url.value,
-            title=article.title,
-            published_at=article.published_at,
-        )
+    def add(self, article: NewArticle) -> bool:
+        """Store one article. Return False when its canonical URL is stored."""
+        try:
+            with transaction.atomic():
+                models.Article.objects.create(
+                    feed_id=article.feed_id,
+                    canonical_url=article.canonical_url.value,
+                    title=article.title,
+                    published_at=article.published_at,
+                    stored_at=article.stored_at,
+                )
+        except IntegrityError as err:
+            if _violates(err, models.ARTICLE_URL_UNIQUE):
+                return False
+            raise
+        return True
 
 
 class DjangoRunLog:
@@ -91,13 +99,17 @@ def _url_taken_as_rule_error() -> Iterator[None]:
         with transaction.atomic():
             yield
     except IntegrityError as err:
-        cause = err.__cause__
-        if (
-            isinstance(cause, psycopg.errors.UniqueViolation)
-            and cause.diag.constraint_name == models.FEED_URL_UNIQUE
-        ):
+        if _violates(err, models.FEED_URL_UNIQUE):
             raise FeedRuleError(FeedRuleReason.URL_TAKEN) from err
         raise
+
+
+def _violates(err: IntegrityError, constraint: str) -> bool:
+    cause = err.__cause__
+    return (
+        isinstance(cause, psycopg.errors.UniqueViolation)
+        and cause.diag.constraint_name == constraint
+    )
 
 
 def _is_article_reference(err: IntegrityError) -> bool:

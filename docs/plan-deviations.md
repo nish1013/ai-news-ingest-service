@@ -19,3 +19,21 @@ Where the build departs from [plan.md](plan.md), and why. A deviation becomes a 
 - **Built:** `requirements.txt` pins `feedparser==6.0.12` (2025-09-10). It depends on `sgmllib3k`, released in 2010.
 - **Why:** 6.0.13 and later depend on `feedparser-sgmllib`, first released 2026-07-27 from the `python-syndication` org, not the feedparser repo. The dependency check could not confirm its owner. The package is 3 months old.
 - **Undo:** Bump the pin to 6.0.14 after a registry check of `feedparser-sgmllib`: owner, age, source repo.
+
+## D3. S6 AC7 proven by an on-time article query (PR 3, 2026-10-28)
+
+**In short:** The on-time rule is a query on the article table, ahead of the metric command that prints it.
+
+- **Plan:** PR 3 delivers S6 AC7: "The metric query runs. The article counts as stored under 30 min." PR 6 delivers the metric command (S9).
+- **Built:** `on_time_articles()` in `ingest/adapters/orm/queries.py` returns articles with a published date and `stored_at` under 30 min after it. `ON_TIME_LIMIT` in the domain holds the 30 min.
+- **Why:** No metric query exists before PR 6. The query holds only the on-time rule. The exclusions of D17 and D18 belong to S9 AC1 and AC2.
+- **Undo:** Move the query into the PR 6 metric command and point the S6 AC7 test at that command.
+
+## D4. Unique key on the MD5 of the canonical URL (PR 3, 2026-10-28)
+
+**In short:** A hash of the link keeps one article per link for links of any length.
+
+- **Plan:** The unique key is on `article.canonical_url` (aggregates.md, "Rule per command" IngestArticle row and the R6 row).
+- **Built:** The unique constraint is on `MD5(canonical_url)`, with the same constraint name. `canonical_url` is a text column.
+- **Why:** A link over 2000 characters raised `DataError` and stopped the pass. On a text column, a plain btree unique key refuses a 5000-character link with `ProgramLimitExceeded` (index row over 2704 bytes). Two different URLs with one MD5 count as one article, an accepted risk at mvp.
+- **Undo:** Replace the expression constraint with a plain unique key on `canonical_url`. Cap the link length and reject longer links.
