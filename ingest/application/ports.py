@@ -61,8 +61,8 @@ class ArticleStore(Protocol):
 class PassLock(Protocol):
     """Lets one ingest pass run at a time."""
 
-    def acquire(self) -> None:
-        """Take the lock."""
+    def try_acquire(self) -> bool:
+        """Take the lock if it is free. Return False when another pass holds it."""
         ...
 
     def release(self) -> None:

@@ -57,9 +57,10 @@ class IngestPass:
         self._run_log = run_log
         self._clock = clock
 
-    def run(self) -> PassReport:
-        """Run one pass and write its run record."""
-        self._lock.acquire()
+    def run(self) -> PassReport | IngestPassSkipped:
+        """Run one pass and write its run record. Skip when another pass runs."""
+        if not self._lock.try_acquire():
+            return IngestPassSkipped()
         try:
             return self._run_locked()
         finally:

@@ -68,9 +68,12 @@ class FakePassLock:
     held: bool = False
     acquired: int = 0
 
-    def acquire(self) -> None:
+    def try_acquire(self) -> bool:
+        if self.held:
+            return False
         self.held = True
         self.acquired += 1
+        return True
 
     def release(self) -> None:
         self.held = False

@@ -10,7 +10,7 @@ from ingest.adapters.orm.stores import (
     DjangoRunLog,
 )
 from ingest.adapters.postgres_lock import PostgresPassLock
-from ingest.application.ingest_pass import IngestPass
+from ingest.application.ingest_pass import IngestPass, IngestPassSkipped
 
 
 class Command(BaseCommand):
@@ -28,6 +28,9 @@ class Command(BaseCommand):
             run_log=DjangoRunLog(),
             clock=SystemClock(),
         ).run()
+        if isinstance(report, IngestPassSkipped):
+            self.stdout.write("Pass skipped: another pass holds the lock")
+            return
         counts = report.counts
         self.stdout.write(
             f"Pass completed: {counts.feeds_ok} feeds ok, {counts.feeds_failed} "
