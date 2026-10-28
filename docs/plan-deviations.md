@@ -8,7 +8,7 @@ Where the build departs from [plan.md](plan.md), and why. A deviation becomes a 
 
 - **Plan:** PR 1 delivers CI (Stack, row CI): GitHub Actions with a Postgres 16 service runs `make check`.
 - **Built:** PR 1 has no workflow file. A last PR "CI" adds it after the end suite of the series.
-- **Why:** The night build writes no CI or CD file. `make check` runs the same gates locally.
+- **Why:** `make check` ran the same gates locally on each PR, so the CI workflow came after the six feature PRs.
 - **Undo:** Add `.github/workflows/check.yml` with a Postgres 16 service that runs `make check`.
 
 ## D2. feedparser pinned at 6.0.12 (PR 1, 2026-10-28)
