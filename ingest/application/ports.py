@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Protocol
 
 from ingest.domain.article import NewArticle
-from ingest.domain.feed import Feed, FetchFailure, ParsedFeed
+from ingest.domain.feed import Feed, FeedDetails, FetchFailure, ParsedFeed
 from ingest.domain.run import RunCounts
 
 
@@ -13,6 +13,22 @@ class FeedCatalog(Protocol):
 
     def active_feeds(self) -> list[Feed]:
         """Return the active feeds."""
+        ...
+
+    def add(self, details: FeedDetails) -> int:
+        """Store an active feed and return its id. Raise FeedRuleError(url_taken)."""
+        ...
+
+    def update(self, feed_id: int, details: FeedDetails) -> None:
+        """Store a new name and URL. Raise FeedRuleError(url_taken)."""
+        ...
+
+    def set_active(self, feed_id: int, *, active: bool) -> None:
+        """Store the active flag of a feed."""
+        ...
+
+    def delete(self, feed_id: int) -> None:
+        """Remove a feed. Raise FeedRuleError(has_articles)."""
         ...
 
 
