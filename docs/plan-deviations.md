@@ -25,9 +25,9 @@ Where the build departs from [plan.md](plan.md), and why. A deviation becomes a 
 **In short:** The on-time rule is a query on the article table, ahead of the metric command that prints it.
 
 - **Plan:** PR 3 delivers S6 AC7: "The metric query runs. The article counts as stored under 30 min." PR 6 delivers the metric command (S9).
-- **Built:** `on_time_articles()` in `ingest/adapters/orm/queries.py` returns articles with a published date and `stored_at` under 30 min after it. `ON_TIME_LIMIT` in the domain holds the 30 min.
-- **Why:** No metric query exists before PR 6. The query holds only the on-time rule. The exclusions of D17 and D18 belong to S9 AC1 and AC2.
-- **Undo:** Move the query into the PR 6 metric command and point the S6 AC7 test at that command.
+- **Built:** PR 3 proved S6 AC7 with its own on-time query in `ingest/adapters/orm/queries.py`. PR 6 replaced it with `on_time_metric()`, which adds the D17 and D18 exclusions, and the S6 AC7 tests check it.
+- **Why:** No metric query existed before PR 6, so S6 AC7 needed a query of its own until then.
+- **Undo:** Nothing is left to undo: the S6 AC7 tests and the `ingest_metric` command use the same query.
 
 ## D4. Unique key on the MD5 of the canonical URL (PR 3, 2026-10-28)
 
