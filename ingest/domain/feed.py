@@ -3,8 +3,11 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from urllib.parse import urlsplit
 
 from ingest.domain.errors import IngestError
+
+_FEED_SCHEMES = frozenset({"http", "https"})
 
 
 class FeedRuleReason(StrEnum):
@@ -34,7 +37,16 @@ class FeedUrl:
     @classmethod
     def from_text(cls, text: str) -> "FeedUrl":
         """Return the feed URL, or raise FeedRuleError with the broken rule."""
-        raise NotImplementedError
+        value = text.strip()
+        if not value:
+            raise FeedRuleError(FeedRuleReason.URL_MISSING)
+        try:
+            parts = urlsplit(value)
+        except ValueError as err:
+            raise FeedRuleError(FeedRuleReason.URL_SCHEME) from err
+        if parts.scheme.lower() not in _FEED_SCHEMES or not parts.hostname:
+            raise FeedRuleError(FeedRuleReason.URL_SCHEME)
+        return cls(value)
 
 
 @dataclass(frozen=True)
@@ -47,7 +59,10 @@ class FeedDetails:
     @classmethod
     def create(cls, *, name: str, url: str) -> "FeedDetails":
         """Return the details, or raise FeedRuleError with the broken rule."""
-        raise NotImplementedError
+        clean_name = name.strip()
+        if not clean_name:
+            raise FeedRuleError(FeedRuleReason.NAME_MISSING)
+        return cls(name=clean_name, url=FeedUrl.from_text(url))
 
 
 @dataclass(frozen=True)

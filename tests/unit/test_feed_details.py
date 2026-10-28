@@ -23,6 +23,7 @@ def test_r1_absolute_http_or_https_url_is_a_feed_url(text: str) -> None:
         ("/blog/rss.xml", FeedRuleReason.URL_SCHEME),
         ("https://", FeedRuleReason.URL_SCHEME),
         ("javascript:alert(1)", FeedRuleReason.URL_SCHEME),
+        ("http://[::1/feed", FeedRuleReason.URL_SCHEME),
         ("", FeedRuleReason.URL_MISSING),
         ("   ", FeedRuleReason.URL_MISSING),
     ],
