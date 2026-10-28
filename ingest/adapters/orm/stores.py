@@ -49,6 +49,10 @@ class DjangoFeedCatalog:
                 models.Feed.objects.filter(id=feed_id).delete()
         except ProtectedError as err:
             raise FeedRuleError(FeedRuleReason.HAS_ARTICLES) from err
+        except IntegrityError as err:
+            if _is_article_reference(err):
+                raise FeedRuleError(FeedRuleReason.HAS_ARTICLES) from err
+            raise
 
 
 class DjangoArticleStore:
@@ -94,3 +98,11 @@ def _url_taken_as_rule_error() -> Iterator[None]:
         ):
             raise FeedRuleError(FeedRuleReason.URL_TAKEN) from err
         raise
+
+
+def _is_article_reference(err: IntegrityError) -> bool:
+    cause = err.__cause__
+    return (
+        isinstance(cause, psycopg.errors.ForeignKeyViolation)
+        and cause.diag.table_name == models.Article._meta.db_table
+    )
