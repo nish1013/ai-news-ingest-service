@@ -2,8 +2,8 @@ from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 
 import pytest
-from ingest.adapters.feed_reader import HttpFeedReader
 
+from ingest.adapters.feed_reader import HttpFeedReader
 from ingest.application.ports import FeedReader
 from ingest.domain.feed import FeedItem, ParsedFeed
 from tests.fakes import StubFeedReader

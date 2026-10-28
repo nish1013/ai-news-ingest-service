@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from ingest.application.ingest_pass import IngestPass
 from ingest.domain.feed import Feed, FeedItem, FetchFailure, ParsedFeed
 from ingest.domain.run import RunCounts
-
 from tests.fakes import (
     FakePassLock,
     FixedClock,

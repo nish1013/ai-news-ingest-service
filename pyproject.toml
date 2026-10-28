@@ -14,6 +14,9 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["config", "ingest", "tests"]
+
 [tool.mypy]
 python_version = "3.12"
 files = ["config", "ingest"]
