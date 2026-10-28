@@ -15,6 +15,58 @@ owner                -> ingest_metric --days N -> on time, excluded, duplicate c
 | Django admin | Edits the feeds and lists the run records. |
 | Postgres 16 | Holds feeds, articles and run records. It runs in Docker Compose. |
 
+![Admin feed list. The failing feed is at the top.](docs/images/admin-feeds.png)
+
+## Design
+
+One bounded context, one aggregate and hexagonal layers. An import contract fails CI when the domain imports a framework.
+
+```
+owner, cron -> adapters: admin, commands -> application: IngestPass, FeedCommands -> domain
+domain:   Feed, FeedUrl, CanonicalUrl, FetchFailure. No Django, no httpx, no feedparser.
+adapters: Django ORM, Postgres lock, httpx and feedparser, system clock
+```
+
+| Doc | Read it for |
+|---|---|
+| [brief.md](docs/brief.md) | The goal, the metric, the user and the scope. |
+| [eventstorm.md](docs/eventstorm.md) | The events on a timeline, the hot spots, the commands and the policies. |
+| [aggregates.md](docs/aggregates.md) | The rule per command, the guard per rule and the context map. |
+| [decisions.md](docs/decisions.md) | 22 dated decisions. Each names the alternatives and the consequence. |
+| [plan-deviations.md](docs/plan-deviations.md) | Each place where the build left the plan, with the reason. |
+
+### Trade-offs
+
+Each row names the choice, the option it rejects and the cost the service accepts.
+
+| Topic | Choice | Rejected | Cost accepted |
+|---|---|---|---|
+| Schedule (D1, D12) | Cron starts a one-shot pass each 15 min. | A long-running worker needs its own timer, restart logic and health check. | An overrun shows only as skip lines in the log. |
+| Duplicates (D2) | The store keeps one article per canonical URL. | Title similarity merges short titles such as "GPT-6 is out". | The same story from two sources gives two rows. |
+| Unique key (deviation D4) | The key is on `MD5(canonical_url)`. | A plain key fails, because Postgres refuses an index row over 2704 bytes. | Two URLs with one MD5 count as one article. |
+| Read deadline (D20) | Each feed read has 10 s in total and a 5 MB body cap. | With a per-read timeout, a slow drip feed holds the pass for minutes. | DNS time is outside the 10 s (deviation D5). |
+| Crash safety (D21) | The articles of one feed commit in one transaction. | One transaction per article makes 20x more commits. One per pass loses all on a crash. | A crash leaves one unfinished run record. |
+| Feed delete (D15) | Admin refuses to delete a feed with articles. | A cascade delete changes past metric values. | A dead feed stays as an inactive row. |
+| Dependency (deviation D2) | `feedparser` stays at 6.0.12. | 6.0.13 adds a 3-month-old package from another org, and its owner is not confirmed. | The parser is one release behind. |
+
+### Rules two requests can break
+
+A test with two Postgres connections proves each guard.
+
+| Rule | Guard | Test |
+|---|---|---|
+| One article per canonical URL (R6) | Unique key | `tests/integration/test_article_url_race.py` |
+| One pass at a time (R3) | Advisory lock | `tests/integration/test_pass_lock.py` |
+| A feed with articles stays (R10) | `PROTECT` foreign key | `tests/integration/test_feed_delete_race.py` |
+
+### Known limits
+
+The service accepts these limits.
+
+- A feed read can take 10 s plus its DNS time (deviation D5).
+- The first pass stores the whole backlog of each feed. That backlog is not on time, so the share starts low.
+  A local first pass gave `on time 0 of 911`. The share is valid once the backlog leaves the 14-day window.
+
 ## Install
 
 The app runs on the host. Only Postgres runs in Docker.
