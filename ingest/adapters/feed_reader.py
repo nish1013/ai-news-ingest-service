@@ -31,27 +31,42 @@ class HttpFeedReader:
             body = self._fetch(url)
         except httpx.TimeoutException:
             return FetchFailure.timeout()
-        except httpx.HTTPError:
+        except (httpx.HTTPError, httpx.InvalidURL, UnicodeError):
             return FetchFailure.connection()
         if isinstance(body, FetchFailure):
             return body
         return _parse(body)
 
     def _fetch(self, url: str) -> bytes | FetchFailure:
-        started = time.monotonic()
-        with httpx.stream(
-            "GET", url, timeout=self.deadline_seconds, follow_redirects=True
-        ) as response:
+        deadline = time.monotonic() + self.deadline_seconds
+
+        def cap_to_deadline(request: httpx.Request) -> None:
+            request.extensions["timeout"] = _time_left(deadline).as_dict()
+
+        with (
+            httpx.Client(
+                follow_redirects=True, event_hooks={"request": [cap_to_deadline]}
+            ) as client,
+            client.stream("GET", url) as response,
+        ):
             if not response.is_success:
                 return FetchFailure.http_status(response.status_code)
+            cap_to_deadline(response.request)
             body = bytearray()
             for chunk in response.iter_bytes():
                 body += chunk
                 if len(body) > self.max_body_bytes:
                     return FetchFailure.too_large()
-                if time.monotonic() - started > self.deadline_seconds:
+                if time.monotonic() > deadline:
                     return FetchFailure.timeout()
         return bytes(body)
+
+
+def _time_left(deadline: float) -> httpx.Timeout:
+    left = deadline - time.monotonic()
+    if left <= 0:
+        raise httpx.ConnectTimeout("total deadline passed")
+    return httpx.Timeout(left)
 
 
 def _parse(body: bytes) -> ParsedFeed | FetchFailure:
