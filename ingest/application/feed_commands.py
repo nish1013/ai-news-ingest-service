@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from ingest.application.ports import FeedCatalog
-from ingest.domain.feed import FeedRuleReason
+from ingest.domain.feed import FeedDetails, FeedRuleError, FeedRuleReason
 
 
 @dataclass(frozen=True)
@@ -35,8 +35,16 @@ class FeedCommands:
 
     def register(self, *, name: str, url: str) -> FeedRegistered | FeedRejected:
         """Add a feed. It starts active."""
-        raise NotImplementedError
+        try:
+            feed_id = self._catalog.add(FeedDetails.create(name=name, url=url))
+        except FeedRuleError as err:
+            return FeedRejected(err.reason)
+        return FeedRegistered(feed_id)
 
     def edit(self, feed_id: int, *, name: str, url: str) -> FeedEdited | FeedRejected:
         """Give a feed a new name and URL."""
-        raise NotImplementedError
+        try:
+            self._catalog.update(feed_id, FeedDetails.create(name=name, url=url))
+        except FeedRuleError as err:
+            return FeedRejected(err.reason)
+        return FeedEdited(feed_id)

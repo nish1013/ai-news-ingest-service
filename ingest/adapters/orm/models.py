@@ -2,13 +2,20 @@
 
 from django.db import models
 
+FEED_URL_UNIQUE = "feed_url_unique"
+
 
 class Feed(models.Model):
-    """A registered feed."""
+    """A registered feed. Its URL is unique, compared exactly (R9)."""
 
     name = models.CharField(max_length=200)
     url = models.CharField(max_length=2000)
     active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["url"], name=FEED_URL_UNIQUE),
+        ]
 
     def __str__(self) -> str:
         return self.name

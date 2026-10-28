@@ -1,10 +1,15 @@
 """ORM adapters for the FeedCatalog, ArticleStore and RunLog ports."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
+
+import psycopg
+from django.db import IntegrityError, transaction
 
 from ingest.adapters.orm import models
 from ingest.domain.article import NewArticle
-from ingest.domain.feed import Feed, FeedDetails
+from ingest.domain.feed import Feed, FeedDetails, FeedRuleError, FeedRuleReason
 from ingest.domain.run import RunCounts
 
 
@@ -20,11 +25,17 @@ class DjangoFeedCatalog:
 
     def add(self, details: FeedDetails) -> int:
         """Store an active feed and return its id. Raise FeedRuleError(url_taken)."""
-        raise NotImplementedError
+        with _url_taken_as_rule_error():
+            return models.Feed.objects.create(
+                name=details.name, url=details.url.value
+            ).id
 
     def update(self, feed_id: int, details: FeedDetails) -> None:
         """Store a new name and URL. Raise FeedRuleError(url_taken)."""
-        raise NotImplementedError
+        with _url_taken_as_rule_error():
+            models.Feed.objects.filter(id=feed_id).update(
+                name=details.name, url=details.url.value
+            )
 
 
 class DjangoArticleStore:
@@ -55,3 +66,18 @@ class DjangoRunLog:
             feeds_failed=counts.feeds_failed,
             articles_new=counts.articles_new,
         )
+
+
+@contextmanager
+def _url_taken_as_rule_error() -> Iterator[None]:
+    try:
+        with transaction.atomic():
+            yield
+    except IntegrityError as err:
+        cause = err.__cause__
+        if (
+            isinstance(cause, psycopg.errors.UniqueViolation)
+            and cause.diag.constraint_name == models.FEED_URL_UNIQUE
+        ):
+            raise FeedRuleError(FeedRuleReason.URL_TAKEN) from err
+        raise
